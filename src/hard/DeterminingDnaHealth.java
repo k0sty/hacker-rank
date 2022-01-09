@@ -29,6 +29,11 @@ a b c aa d b
 1
 1 5 caaab
 
+6
+a b c aa d b
+1 2 3 4 5 6
+1
+0 4 xyz
 
 
  */
@@ -70,17 +75,15 @@ a b c aa d b
 
 class TrieLevel {
     private final Map<Character, TrieLevel> trieLevelMap;
-    private final char character;
     private boolean isWord;
     private int value = 0;
 
-    TrieLevel (char character) {
+    TrieLevel () {
         this.trieLevelMap = new HashMap<>();
-        this.character = character;
     }
 
-    TrieLevel (char character, boolean isWord, int value) {
-        this(character);
+    TrieLevel (boolean isWord, int value) {
+        this();
         this.isWord = isWord;
         this.value = value;
     }
@@ -102,12 +105,26 @@ class TrieLevel {
         return isWord;
     }
 
-    char getCharacter() {
-        return character;
-    }
-
     int getValue() {
         return value;
+    }
+}
+
+class Pair {
+    final String gene;
+    final int score;
+
+    public Pair(String gene, int score) {
+        this.gene = gene;
+        this.score = score;
+    }
+
+    public String getGene() {
+        return gene;
+    }
+
+    public int getScore() {
+        return score;
     }
 }
 
@@ -115,7 +132,7 @@ class Trie {
     private TrieLevel rootTrieLevel;
 
     Trie() {
-        rootTrieLevel = new TrieLevel('');
+        rootTrieLevel = new TrieLevel();
     }
 
     void addWord(String word, int value) {
@@ -131,7 +148,7 @@ class Trie {
                 trieLevel.setIsWord(isWord, value);
                 currentLevel = trieLevel;
             } else {
-                TrieLevel newLevel = isWord? new TrieLevel(curr, isWord, value) : new TrieLevel(curr);
+                TrieLevel newLevel = isWord? new TrieLevel(isWord, value) : new TrieLevel();
                 currentMap.put(curr, newLevel);
                 currentLevel = newLevel;
             }
@@ -146,10 +163,63 @@ class Trie {
         return sortedSet;
     }
 
+    Pair getNextGene(String geneSequence) {
+        StringBuilder builder = new StringBuilder();
+
+        TrieLevel currentLevel = rootTrieLevel;
+
+        for (Character curr : geneSequence.toCharArray()) {
+            if (currentLevel.getTrieLevelMap().containsKey(curr)) {
+                builder.append(curr);
+                final TrieLevel level = currentLevel.getTrieLevelMap().get(curr);
+                if (level.isWord()) {
+                    return new Pair(builder.toString(), level.getValue());
+                }
+                currentLevel = level;
+            } else {
+                break;
+            }
+
+            /*if (currentLevel.isWord()) {
+                return new Pair(builder.toString(), currentLevel.getValue());
+            }
+
+            builder.append(curr);
+
+            if (!currentLevel.getTrieLevelMap().containsKey(curr)) {
+                return null;
+            } else {
+                currentLevel = currentLevel.getTrieLevelMap().get(curr);
+            }*/
+        }
+
+        return null;
+    }
+
+    int getScore(String gene) {
+        int ret = 0;
+
+        //String remainingGene = gene;
+        for (int i = 0; i < gene.length(); i++) {
+            final String substring = gene.substring(i, gene.length());
+            Pair pair = getNextGene(substring);
+            if (pair != null) {
+                System.out.println(pair.getGene());
+                ret += pair.getScore();
+            }
+        }
+
+        return ret;
+    }
+
     Set<Integer> getScoreForGeneHelper(Set<Integer> scores, int currentScore,
                                        String remainingGene, TrieLevel currentTrieLevel) {
         if (currentTrieLevel.isWord()) {
             currentScore += currentTrieLevel.getValue();
+            if (remainingGene.isEmpty()) {
+                return scores;
+            }
+            return getScoreForGeneHelper(scores, currentScore, remainingGene, rootTrieLevel);
         }
 
         if (remainingGene.isEmpty()) {
@@ -159,29 +229,33 @@ class Trie {
 
         final Map<Character, TrieLevel> currTrieLevelMap = currentTrieLevel.getTrieLevelMap();
         final char currChar = remainingGene.charAt(0);
+        final String substring = remainingGene.substring(1, remainingGene.length());
         if (currTrieLevelMap.containsKey(currChar)) {
-            return getScoreForGeneHelper(scores, currentScore,
-                    remainingGene.substring(1, remainingGene.length()-1),
+            return getScoreForGeneHelper(scores, currentScore, substring,
                     currTrieLevelMap.get(currChar));
+        } else {
+            if (currentTrieLevel == rootTrieLevel) {
+                return getScoreForGeneHelper(scores, currentScore, substring, rootTrieLevel);
+            }
+            return getScoreForGeneHelper(scores, currentScore, remainingGene, rootTrieLevel);
         }
-        return new HashSet<>();
     }
 
 
     void printAllWords() {
         TrieLevel currentLevel = rootTrieLevel;
         for (Character curr: currentLevel.getTrieLevelMap().keySet()) {
-            printAllWordsHelper(new StringBuilder(), currentLevel.getTrieLevelMap().get(curr));
+            printAllWordsHelper(new StringBuilder().append(curr), currentLevel.getTrieLevelMap().get(curr));
         }
     }
 
     private void printAllWordsHelper(StringBuilder builder, TrieLevel currentLevel) {
-        builder.append(currentLevel.getCharacter());
+
         if (currentLevel.isWord()) {
             System.out.println(builder.toString() + " " + currentLevel.getValue());
         }
         for (Character curr : currentLevel.getTrieLevelMap().keySet()) {
-            printAllWordsHelper(builder, currentLevel.getTrieLevelMap().get(curr));
+            printAllWordsHelper(builder.append(curr), currentLevel.getTrieLevelMap().get(curr));
         }
     }
 }
@@ -203,11 +277,10 @@ public class DeterminingDnaHealth {
 
 
         int s = Integer.parseInt(bufferedReader.readLine().trim());
-
-        int minScore = Integer.MIN_VALUE;
-        int maxScore = Integer.MAX_VALUE;
-
+        final SortedSet<Integer> sortedSet = new TreeSet<>();
         IntStream.range(0, s).forEach(sItr -> {
+            int minScore = Integer.MAX_VALUE;
+            int maxScore = Integer.MIN_VALUE;
             try {
                 String[] firstMultipleInput = bufferedReader.readLine().replaceAll("\\s+$", "").split(" ");
 
@@ -216,20 +289,24 @@ public class DeterminingDnaHealth {
                 int last = Integer.parseInt(firstMultipleInput[1]);
 
                 String d = firstMultipleInput[2];
-                System.out.println(d + ":");
                 Trie trie = new Trie();
                 for (int i = first; i <=last; i++) {
                     trie.addWord(genes.get(i), health.get(i));
                 }
-                trie.printAllWords();
-                System.out.println();
 
-                //System.out.println(trie.getScoreForGene(d));
+                //trie.printAllWords();
+                sortedSet.add(trie.getScore(d));
+
+                //sortedSet.addAll(trie.getScoreForGene(d));
 
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
+
+
         });
+
+        System.out.println(sortedSet.first() + " " + sortedSet.last());
 
         bufferedReader.close();
     }
