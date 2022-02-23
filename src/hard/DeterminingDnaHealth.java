@@ -101,8 +101,6 @@ class Trie {
     }
 
     void addWord(String word, int value) {
-
-
         TrieLevel currentLevel = rootTrieLevel;
         for (int i = 0; i < word.length(); i++) {
             char curr = word.charAt(i);
@@ -149,6 +147,7 @@ class Trie {
             Pair pair = getNextGene(substring);
             if (pair != null) {
                 ret += pair.getScore();
+                //i = i+ pair.getGene().length();
             }
         }
 
@@ -181,11 +180,11 @@ public class DeterminingDnaHealth {
                 .collect(toList());
 
 
-
         int s = Integer.parseInt(bufferedReader.readLine().trim());
         final SortedSet<Integer> sortedSet = new TreeSet<>();
         IntStream.range(0, s).forEach(sItr -> {
             try {
+
                 String[] firstMultipleInput = bufferedReader.readLine().replaceAll("\\s+$", "").split(" ");
 
                 int first = Integer.parseInt(firstMultipleInput[0]);
@@ -193,12 +192,21 @@ public class DeterminingDnaHealth {
                 int last = Integer.parseInt(firstMultipleInput[1]);
 
                 String d = firstMultipleInput[2];
+
+                long beforeTrie = System.currentTimeMillis();
                 Trie trie = new Trie();
                 for (int i = first; i <=last; i++) {
+                    //System.out.print("A");
                     trie.addWord(genes.get(i), health.get(i));
                 }
+                long afterTrie = System.currentTimeMillis();
+                System.out.println("Created Trie in: " + (afterTrie - beforeTrie));
 
+                long beforeScore = System.currentTimeMillis();
                 sortedSet.add(trie.getScore(d));
+                long afterScore = System.currentTimeMillis();
+                System.out.println("Got Score in: " + (afterScore - beforeScore));
+
 
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
@@ -209,6 +217,7 @@ public class DeterminingDnaHealth {
 
         System.out.println(sortedSet.first() + " " + sortedSet.last());
         System.out.println(System.currentTimeMillis());
+
         bufferedReader.close();
     }
 }
